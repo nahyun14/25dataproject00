@@ -1,39 +1,51 @@
 import streamlit as st
-import streamlit as st
 import pandas as pd
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
+import geopandas as gpd
 
-# 🐾 타이틀
-st.title("서울시 서초구 고등학교 지도")
+st.set_page_config(layout="wide")
+st.title("🌍 전 세계 환경 지도 - 탄소 배출량 시각화")
+st.markdown("국가별 **이산화탄소(CO₂) 배출량**을 지도에 표시한 환경 정보 대시보드입니다.")
 
-# 🐾 고등학교 데이터 (동덕여고 포함!)
-data = pd.DataFrame({
-    '학교명': ['서울고등학교', '서초고등학교', '양재고등학교', '동덕여자고등학교'],
-    '주소': [
-        '서울 서초구 반포대로 45',
-        '서울 서초구 서초중앙로 80',
-        '서울 서초구 바우뫼로 118',
-        '서울 서초구 반포대로 89'
-    ],
-    '위도': [37.499, 37.4925, 37.4786, 37.504768],
-    '경도': [127.011, 127.015, 127.038, 127.009536]
-})
+# 예시용 CO₂ 배출량 데이터 (실제로는 외부 CSV로 대체 가능)
+data = {
+    'Country': ['China', 'United States', 'India', 'Russia', 'Japan', 'Germany', 'Iran', 'South Korea', 'Saudi Arabia', 'Canada'],
+    'CO2_emission': [10000, 5000, 2500, 1700, 1200, 900, 800, 700, 600, 550]
+}
+df = pd.DataFrame(data)
 
-# 🐾 지도 중심 좌표 (서초구 중심)
-center_lat = 37.4836
-center_lon = 127.0326
+# 세계 지도 데이터 (geopandas의 내장 world 데이터)
+world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
 
-# 🐾 Folium 지도 생성
-m = folium.Map(location=[center_lat, center_lon], zoom_start=13)
+# 국가명 기준 병합
+world = world.merge(df, how='left', left_on='name', right_on='Country')
 
-# 🐾 각 고등학교에 마커 추가
-for idx, row in data.iterrows():
+# Folium 지도 초기화
+m = folium.Map(location=[20, 0], zoom_start=2)
+
+# 색상 scale 설정
+folium.Choropleth(
+    geo_data=world,
+    name="CO2 Emission",
+    data=world,
+    columns=["name", "CO2_emission"],
+    key_on="feature.properties.name",
+    fill_color="YlOrRd",
+    fill_opacity=0.7,
+    line_opacity=0.2,
+    legend_name="CO₂ 배출량 (Mt)",
+    nan_fill_color="lightgray"
+).add_to(m)
+
+# 각 나라에 마커 추가
+for idx, row in world.dropna(subset=['CO2_emission']).iterrows():
     folium.Marker(
-        location=[row['위도'], row['경도']],
-        popup=row['학교명'],
-        icon=folium.Icon(color='blue', icon='info-sign')
+        location=[row['geometry'].centroid.y, row['geometry'].centroid.x],
+        popup=f"{row['name']}: {row['CO2_emission']} Mt",
+        icon=folium.Icon(color='green', icon='leaf')
     ).add_to(m)
 
-# 🐾 지도 보여주기
-st_folium(m, width=700, height=500)
+# 지도 보여주기
+st_data = st_folium(m, width=1000, height=600)
