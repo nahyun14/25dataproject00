@@ -1,30 +1,45 @@
+import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
+from datetime import date
 
-# 🐾 1. 티커 목록
-tickers = ['MSFT', 'NVDA', 'AAPL', 'AMZN', 'GOOGL', '2222.SR', 'META', 'TSLA', 'BRK-B', 'AVGO']
+st.set_page_config(page_title="글로벌 시총 10대 기업 주가 시각화", layout="wide")
 
-# 🐾 2. 데이터 다운로드 (최근 6개월)
-data = yf.download(tickers, start="2024-11-01", end="2025-05-01")['Close']
+# 🐱 타이틀
+st.title("🌍 글로벌 시가총액 Top 10 기업 주가 추이")
 
-# 🐾 3. Plotly 시각화
-fig = go.Figure()
+st.markdown("""
+이 앱은 Yahoo Finance 데이터를 기반으로 **2025년 기준 글로벌 시총 상위 10개 기업의 주가**를 시각화합니다.  
+좌측의 필터를 통해 원하는 기업과 기간을 선택할 수 있어요! 📈
+""")
 
-for ticker in tickers:
-    fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data[ticker],
-        mode='lines',
-        name=ticker
-    ))
+# 🐾 시총 상위 10개 기업 정보
+companies = {
+    'Microsoft': 'MSFT',
+    'Nvidia': 'NVDA',
+    'Apple': 'AAPL',
+    'Amazon': 'AMZN',
+    'Alphabet (Google)': 'GOOGL',
+    'Saudi Aramco': '2222.SR',
+    'Meta Platforms': 'META',
+    'Tesla': 'TSLA',
+    'Berkshire Hathaway': 'BRK-B',
+    'Broadcom': 'AVGO'
+}
 
-fig.update_layout(
-    title='글로벌 시가총액 상위 10개 기업의 주가 추이 (2024.11 ~ 2025.05)',
-    xaxis_title='날짜',
-    yaxis_title='주가 (USD)',
-    template='plotly_white',
-    height=600
+# 🐾 사이드바 필터
+st.sidebar.header("📊 필터 선택")
+selected_companies = st.sidebar.multiselect(
+    "기업 선택",
+    options=list(companies.keys()),
+    default=list(companies.keys())
 )
 
-fig.show()
+start_date = st.sidebar.date_input("시작 날짜", date(2024, 11, 1))
+end_date = st.sidebar.date_input("종료 날짜", date(2025, 5, 1))
+
+if start_date >= end_date:
+    st.sidebar.error("종료 날짜는 시작 날짜보다 이후여야 합니다!")
+
+# 🐾 선택된 기
