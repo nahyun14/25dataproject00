@@ -1,29 +1,78 @@
+import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
+from datetime import date
 
-# 시가총액 상위 10개 기업
+st.set_page_config(page_title="글로벌 시총 10대 기업 주가 시각화", layout="wide")
+
+# 🐱 타이틀
+st.title("🌍 글로벌 시가총액 Top 10 기업 주가 추이")
+
+st.markdown("""
+이 앱은 Yahoo Finance 데이터를 기반으로 **2025년 기준 글로벌 시총 상위 10개 기업의 주가**를 시각화합니다.  
+좌측의 필터를 통해 원하는 기업과 기간을 선택할 수 있어요! 📈
+""")
+
+# 🐾 시총 상위 10개 기업 정보
 companies = {
     'Microsoft': 'MSFT',
     'Nvidia': 'NVDA',
     'Apple': 'AAPL',
     'Amazon': 'AMZN',
     'Alphabet (Google)': 'GOOGL',
-    'Saudi Aramco': '2222.SR',  # 사우디 리야드 거래소
+    'Saudi Aramco': '2222.SR',
     'Meta Platforms': 'META',
     'Tesla': 'TSLA',
-    'Berkshire Hathaway': 'BRK-B',  # 클래스 B 주식
+    'Berkshire Hathaway': 'BRK-B',
     'Broadcom': 'AVGO'
 }
 
-# Yahoo Finance에서는 '-' 대신 '.' 사용해야 함 (예: BRK-B -> BRK.B)
-adjusted_tickers = {name: ticker.replace('-', '.') for name, ticker in companies.items()}
+# 🐾 사이드바 필터
+st.sidebar.header("📊 필터 선택")
+selected_companies = st.sidebar.multiselect(
+    "기업 선택",
+    options=list(companies.keys()),
+    default=list(companies.keys())
+)
 
-# 데이터 다운로드 (최근 6개월)
-df = yf.download(list(adjusted_tickers.values()), start="2024-11-01", end="2025-05-01")['Close']
+start_date = st.sidebar.date_input("시작 날짜", date(2024, 11, 1))
+end_date = st.sidebar.date_input("종료 날짜", date(2025, 5, 1))
 
-# Plotly 그래프 생성
-fig = go.Figure()
+if start_date >= end_date:
+    st.sidebar.error("종료 날짜는 시작 날짜보다 이후여야 합니다!")
 
-for name, ticker in adjusted_tickers.items():
-    if ticker i
+# 🐾 선택된 기업의 티커 가져오기
+selected_tickers = [companies[comp] for comp in selected_companies]
+
+# 🐾 데이터 다운로드
+@st.cache_data
+def load_data(tickers, start, end):
+    data = yf.download(tickers, start=start, end=end)['Close']
+    return data
+
+if selected_tickers:
+    with st.spinner("데이터 불러오는 중..."):
+        df = load_data(selected_tickers, start_date, end_date)
+
+    # 🐾 시각화
+    fig = go.Figure()
+    for ticker in selected_tickers:
+        fig.add_trace(go.Scatter(
+            x=df.index,
+            y=df[ticker],
+            mode='lines',
+            name=ticker
+        ))
+
+    fig.update_layout(
+        title="📈 주가 추이",
+        xaxis_title="날짜",
+        yaxis_title="주가 (USD)",
+        template="plotly_white",
+        height=600
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.warning("최소 한 개 이상의 기업을 선택해주세요!")
